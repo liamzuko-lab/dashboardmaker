@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת BI אישית - גרסה 7.0 🚀</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1300px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); }
+        h1 { text-align: center; color: #1a73e8; margin-bottom: 30px;}
+        
+        .panel { background: #f8f9fa; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .panel h3 { margin-top: 0; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; display: inline-block; }
+        
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #555; }
+        select, input, button { padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 15px; }
+        
+        .btn { padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 15px; transition: 0.2s;}
+        .btn-primary { background-color: #1a73e8; color: white; }
+        .btn-primary:hover { background-color: #1557b0; }
+        .btn-success { background-color: #34a853; color: white; width: 100%; margin-top: 10px;}
+        .btn-success:hover { background-color: #2b8a44; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-magic { background-color: #9b59b6; color: white; width: 100%; margin-bottom: 20px; font-size: 18px;}
+        .btn-danger { background-color: #e74c3c; color: white; }
+        
+        /* רשימת קבצים */
+        .file-list { margin-top: 10px; font-size: 14px; background: #fff; padding: 10px; border-radius: 5px; border: 1px dashed #ccc;}
+        .file-list span { display: inline-block; background: #e2e3e5; padding: 2px 8px; border-radius: 4px; margin-left: 5px; }
+
+        hr { border: 0; height: 1px; background: #ddd; margin: 25px 0; }
+        
+        /* דשבורד דינמי */
+        #dashboardWrapper { display: none; margin-top: 30px; background: #ffffff; padding: 20px; border-radius: 10px; border: 2px dashed #bdc3c7;}
+        #dynamicDashboard { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); 
+            gap: 20px; 
+            margin-top: 20px;
+        }
+        
+        /* עיצוב ווידג'טים */
+        .widget { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; border: 1px solid #eee; cursor: grab; transition: transform 0.2s;}
+        .widget:active { cursor: grabbing; transform: scale(0.98); }
+        .widget-kpi { text-align: center; display: flex; flex-direction: column; justify-content: center; min-height: 150px; border-top: 5px solid #1a73e8;}
+        .widget h4 { margin: 0 0 15px 0; color: #333; font-size: 18px; }
+        .widget-kpi .val { font-size: 38px; font-weight: bold; color: #2c3e50; }
+        .widget-chart { min-height: 300px; }
+        canvas { max-width: 100%; max-height: 280px; }
+        
+        .widget-controls { position: absolute; top: 10px; left: 10px; display: flex; gap: 5px; }
+        .ctrl-btn { background: #e2e8f0; color: #333; border: none; border-radius: 4px; padding: 5px 8px; cursor: pointer; font-size: 12px; font-weight: bold;}
+        .ctrl-btn.del { background: #e74c3c; color: white; }
+        .ctrl-btn.del:hover { background: #c0392b; }
+        .ctrl-btn.edit { background: #f39c12; color: white; }
+
+        /* מודלים חופפים (Modals) */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 1000; width: 350px; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 999; }
+        
+        .checkbox-list { background: #f8f9fa; padding: 15px; border-radius: 8px; max-height: 200px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #ccc;}
+        .checkbox-list label { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; cursor: pointer; font-weight: normal; font-size: 16px;}
+        .checkbox-list input { width: 18px; height: 18px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>מערכת BI אישית מתקדמת 📊</h1>
+        
+        <div class="panel" id="uploadPanel">
+            <h3>1. מאגר נתונים (DWH)</h3>
+            <p>העלה קבצי CSV או Excel. המערכת תסרוק אותם ותציע ניקוי במידת הצורך.</p>
+            <input type="file" id="dataFile" accept=".csv, .xlsx, .xls" class="btn btn-secondary" onchange="handleFileUpload(event)" />
+            <div class="file-list" id="fileList">טרם נטענו קבצים</div>
+        </div>
+
+        <div class="panel" id="dataModelPanel" style="display: none;">
+            <h3>2. מודל הנתונים (חיבור טבלאות)</h3>
+            <div class="controls-grid">
+                <div class="form-group"><label>טבלה ראשית:</label><select id="mainTableSelect" onchange="updateJoinColumns()"></select></div>
+                <div class="form-group"><label>חבר עם טבלה (אופציונלי):</label><select id="joinTableSelect" onchange="updateJoinColumns()"><option value="">-- ללא חיבור --</option></select></div>
+                <div class="form-group"><label>מזהה בטבלה ראשית:</label><select id="mainKeySelect"></select></div>
+                <div class="form-group"><label>מזהה בטבלה מצורפת:</label><select id="joinKeySelect"></select></div>
+            </div>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="prepareDataset()">אשר מודל והמשך ⚙️</button>
+        </div>
+
+        <div class="panel" id="builderPanel" style="display: none;">
+            <h3>3. הרכבת הדשבורד</h3>
+            
+            <button class="btn btn-magic" onclick="triggerAutoDashboard()">✨ ייצור אוטומטי (דשבורד מלא מנתוני האמת)</button>
+            <div style="text-align: center; color: #7f8c8d;">- או בנייה ידנית מתקדמת -</div>
+            <hr>
+            
+            <div class="controls-grid">
+                <div class="form-group">
+                    <label>סוג ווידג'ט:</label>
+                    <select id="widgetType" onchange="toggleWidgetOptions()">
+                        <option value="bar">📊 גרף עמודות</option>
+                        <option value="line">📈 גרף קווים</option>
+                        <option value="pie">🍕 גרף עוגה</option>
+                        <option value="kpi_sum">🔢 קוביית נתון (סה"כ / ממוצע)</option>
+                        <option value="kpi_percent">٪ קוביית אחוזים חכמה</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="controls-grid" id="standardOptions">
+                <div class="form-group"><label>ציר X (קטגוריה):</label><select id="xAxisSelect"></select></div>
+                <div class="form-group"><label>ציר Y (ערך):</label><select id="yAxisSelect"></select></div>
+                <div class="form-group"><label>פונקציה:</label><select id="aggType"><option value="sum">סכום</option><option value="avg">ממוצע</option><option value="count">ספירת שורות</option></select></div>
+            </div>
+
+            <div class="controls-grid" id="percentOptions" style="display: none; background: #e8f4f8; padding: 15px; border-radius: 8px;">
+                <div class="form-group"><label>עמודה לבדיקה:</label><select id="percentColSelect" onchange="populatePercentValues()"></select></div>
+                <div class="form-group"><label>הערך לחיפוש:</label><select id="percentValSelect"></select></div>
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px; margin-top: 25px;">
+                    <input type="checkbox" id="invertLogic" style="width: 20px; height: 20px;" />
+                    <label for="invertLogic" style="margin: 0;">הפוך נתון (משלים ל-100%)</label>
+                </div>
+            </div>
+
+            <button class="btn btn-success" onclick="addWidget()">➕ הוסף למסך הראשי</button>
+        </div>
+
+        <div id="dashboardWrapper">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: #2c3e50;">תצוגת נתונים פעילה</h2>
+                <button class="btn hide-on-export" style="background-color: #34495e; color: white;" onclick="exportDashboard()">📸 ייצא כתמונה חלקה</button>
+            </div>
+            <div id="dynamicDashboard"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="cleanerOverlay"></div>
+    <div class="modal" id="cleanerModal">
+        <h3 style="margin-top: 0; color: #e67e22;">🧹 ניקוי נתונים חכם</h3>
+        <p>זיהינו שהעמודות הבאות מכילות <strong>ערך זהה בלבד</strong> בכל השורות. האם תרצה למחוק אותן כדי לא להעמיס על המערכת?</p>
+        <div class="checkbox-list" id="cleaningCheckboxes"></div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn btn-danger" onclick="applyCleaning()">מחק עמודות שסומנו ב-V</button>
+            <button class="btn btn-secondary" onclick="skipCleaning()">המשך ללא מחיקה</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editOverlay" onclick="closeEditModal()"></div>
+    <div class="modal" id="editModal">
+        <h3 style="margin-top: 0;">עריכת וידג'ט ✏️</h3>
+        <input type="hidden" id="editWidgetId">
+        <div class="form-group"><label>צבע רקע הקוביה:</label><input type="color" id="editBgColor" style="width: 100%; height: 40px;"></div>
+        <div class="form-group" id="editChartColorGroup" style="margin-top: 10px;"><label>צבע הגרף:</label><input type="color" id="editChartColor" style="width: 100%; height: 40px;"></div>
+        <div class="form-group" style="margin-top: 10px;"><label>גודל כותרת (px):</label><input type="number" id="editFontSize" min="10" max="40"></div>
+        <button class="btn btn-success" style="width: 100%; margin-top: 20px;" onclick="saveWidgetEdits()">שמור שינויים</button>
+    </div>
+
+    <script>
+        let datasets = {}; 
+        let activeMergedData = [];
+        let widgetCounter = 0;
+        let chartInstances = {}; 
+        
+        let pendingFileName = "";
+        let pendingData = [];
+
+        // --- 1. קריאת קבצים וניקוי חכם ---
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const fileName = file.name;
+            const fileExt = fileName.split('.').pop().toLowerCase();
+
+            if (fileExt === 'csv') {
+                Papa.parse(file, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: res => analyzeAndClean(fileName, res.data) });
+            } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                    analyzeAndClean(fileName, XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        // סורק האם יש עמודות קבועות (Zero Variance)
+        function analyzeAndClean(fileName, data) {
+            if(data.length === 0) return;
+            pendingFileName = fileName;
+            pendingData = data;
+            
+            const cols = Object.keys(data[0]);
+            const constantCols = [];
+            
+            cols.forEach(col => {
+                let firstVal = data[0][col];
+                let isConstant = true;
+                for(let i=1; i<data.length; i++) {
+                    if(data[i][col] !== firstVal) { isConstant = false; break; }
+                }
+                if(isConstant) constantCols.push(col);
+            });
+
+            if(constantCols.length > 0) {
+                const boxList = document.getElementById('cleaningCheckboxes');
+                boxList.innerHTML = '';
+                constantCols.forEach(c => {
+                    boxList.innerHTML += `<label><input type="checkbox" value="${c}" checked> ${c}</label>`;
+                });
+                document.getElementById('cleanerOverlay').style.display = 'block';
+                document.getElementById('cleanerModal').style.display = 'block';
+            } else {
+                storeDataset(fileName, data);
+            }
+        }
+
+        function applyCleaning() {
+            const checked = document.querySelectorAll('#cleaningCheckboxes input:checked');
+            const colsToDelete = Array.from(checked).map(cb => cb.value);
+            
+            if(colsToDelete.length > 0) {
+                pendingData.forEach(row => { colsToDelete.forEach(c => delete row[c]); });
+            }
+            closeCleaner();
+            storeDataset(pendingFileName, pendingData);
+        }
+
+        function skipCleaning() {
+            closeCleaner();
+            storeDataset(pendingFileName, pendingData);
+        }
+
+        function closeCleaner() {
+            document.getElementById('cleanerOverlay').style.display = 'none';
+            document.getElementById('cleanerModal').style.display = 'none';
+        }
+
+        // --- 2. מודל הנתונים (שמירת הקבצים והכנת Joins) ---
+        function storeDataset(name, data) {
+            datasets[name] = data;
+            const files = Object.keys(datasets);
+            document.getElementById('fileList').innerHTML = files.map(f => `<span>${f}</span>`).join(' ');
+            
+            const mainSel = document.getElementById('mainTableSelect');
+            const joinSel = document.getElementById('joinTableSelect');
+            const currMain = mainSel.value;
+            
+            mainSel.innerHTML = ''; joinSel.innerHTML = '<option value="">-- ללא חיבור --</option>';
+            files.forEach(f => { mainSel.add(new Option(f, f)); joinSel.add(new Option(f, f)); });
+            if(currMain && files.includes(currMain)) mainSel.value = currMain;
+            
+            document.getElementById('dataModelPanel').style.display = 'block';
+            updateJoinColumns();
+        }
+
+        function updateJoinColumns() {
+            const mainFile = document.getElementById('mainTableSelect').value;
+            const joinFile = document.getElementById('joinTableSelect').value;
+            const mainKeySel = document.getElementById('mainKeySelect');
+            const joinKeySel = document.getElementById('joinKeySelect');
+            mainKeySel.innerHTML = ''; joinKeySel.innerHTML = '';
+
+            if(mainFile && datasets[mainFile].length > 0) Object.keys(datasets[mainFile][0]).forEach(k => mainKeySel.add(new Option(k, k)));
+            if(joinFile && datasets[joinFile].length > 0) Object.keys(datasets[joinFile][0]).forEach(k => joinKeySel.add(new Option(k, k)));
+        }
+
+        function prepareDataset() {
+            const mainFile = document.getElementById('mainTableSelect').value;
+            const joinFile = document.getElementById('joinTableSelect').value;
+            
+            if (!joinFile) {
+                activeMergedData = [...datasets[mainFile]];
+            } else {
+                const joinMap = {};
+                const jk = document.getElementById('joinKeySelect').value;
+                const mk = document.getElementById('mainKeySelect').value;
+                datasets[joinFile].forEach(row => { joinMap[row[jk]] = row; });
+                activeMergedData = datasets[mainFile].map(mainRow => ({ ...mainRow, ...(joinMap[mainRow[mk]] || {}) }));
+            }
+
+            if (activeMergedData.length > 0) {
+                const headers = Object.keys(activeMergedData[0]);
+                ['xAxisSelect', 'yAxisSelect', 'percentColSelect'].forEach(id => {
+                    const el = document.getElementById(id); el.innerHTML = '';
+                    headers.forEach(h => el.add(new Option(h, h)));
+                });
+                document.getElementById('builderPanel').style.display = 'block';
+                populatePercentValues();
+            }
+        }
+
+        // --- 3. בניית הממשק והווידג'טים ---
+        function toggleWidgetOptions() {
+            const type = document.getElementById('widgetType').value;
+            document.getElementById('standardOptions').style.display = type === 'kpi_percent' ? 'none' : 'flex';
+            document.getElementById('percentOptions').style.display = type === 'kpi_percent' ? 'flex' : 'none';
+        }
+
+        function populatePercentValues() {
+            const col = document.getElementById('percentColSelect').value;
+            const valSelect = document.getElementById('percentValSelect');
+            valSelect.innerHTML = '';
+            const uniq = [...new Set(activeMergedData.map(r => r[col]))].filter(v => v != null && v !== '');
+            uniq.forEach(val => valSelect.add(new Option(val, val)));
+        }
+
+        function addWidget(autoConfig = null) {
+            const type = autoConfig ? autoConfig.type : document.getElementById('widgetType').value;
+            document.getElementById('dashboardWrapper').style.display = 'block';
+            const board = document.getElementById('dynamicDashboard');
+            
+            const wId = `widget_${widgetCounter++}`;
+            const div = document.createElement('div');
+            div.className = `widget ${type.startsWith('kpi') ? 'widget-kpi' : 'widget-chart'}`;
+            div.id = wId;
+            div.draggable = true; 
+            
+            div.innerHTML = `
+                <div class="widget-controls hide-on-export">
+                    <button class="ctrl-btn edit" onclick="openEditModal('${wId}', '${type}')">✏️</button>
+                    <button class="ctrl-btn del" onclick="removeWidget('${wId}')">X</button>
+                </div>
+            `;
+
+            // התיקון הגדול: קודם מחברים ל-DOM ואז מציירים את הגרף
+            board.appendChild(div);
+
+            if (type === 'kpi_percent') buildPercentKpi(div, wId);
+            else if (type === 'kpi_sum') buildSumKpi(div, wId, autoConfig);
+            else buildChart(div, type, wId, autoConfig);
+
+            setupDragAndDrop(div); 
+        }
+
+        function removeWidget(id) {
+            document.getElementById(id).remove();
+            if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+        }
+
+        function buildPercentKpi(container, id) {
+            const col = document.getElementById('percentColSelect').value;
+            const tVal = document.getElementById('percentValSelect').value;
+            const inv = document.getElementById('invertLogic').checked;
+            const total = activeMergedData.filter(r => r[col] != null).length;
+            const match = activeMergedData.filter(r => String(r[col]) === String(tVal)).length;
+            let p = total ? (match / total) * 100 : 0;
+            if (inv) p = 100 - p;
+            container.innerHTML += `<h4 id="title_${id}">${inv ? 'אחוז הלא-' : 'אחוז ה-'}${tVal} ב-${col}</h4><div class="val">${p.toFixed(1)}%</div>`;
+        }
+
+        function buildSumKpi(container, id, config) {
+            const yF = config ? config.y : document.getElementById('yAxisSelect').value;
+            const agg = config ? config.agg : document.getElementById('aggType').value;
+            let sum = 0, cnt = 0;
+            activeMergedData.forEach(r => { let v = parseFloat(r[yF]); if(!isNaN(v)){ sum+=v; cnt++; }});
+            let val = agg === 'sum' ? sum : (agg === 'avg' ? (cnt?sum/cnt:0) : activeMergedData.length);
+            container.innerHTML += `<h4 id="title_${id}">${agg === 'sum' ? 'סה"כ' : (agg==='avg'?'ממוצע':'ספירת')} ${agg === 'count' ? 'שורות' : yF}</h4><div class="val">${Math.round(val).toLocaleString()}</div>`;
+        }
+
+        function buildChart(container, type, id, config) {
+            const xF = config ? config.x : document.getElementById('xAxisSelect').value;
+            const yF = config ? config.y : document.getElementById('yAxisSelect').value;
+            const agg = config ? config.agg : document.getElementById('aggType').value;
+
+            let grp = {};
+            activeMergedData.forEach(r => {
+                let x = r[xF], y = parseFloat(r[yF]);
+                if(x == null || x === '') return;
+                if(isNaN(y)) y=0;
+                if(!grp[x]) grp[x] = {sum:0, cnt:0};
+                grp[x].sum+=y; grp[x].cnt++;
+            });
+
+            const lbls = Object.keys(grp);
+            const vals = lbls.map(l => agg==='sum'?grp[l].sum : (agg==='avg'?grp[l].sum/grp[l].cnt : grp[l].cnt));
+
+            container.innerHTML += `<h4 id="title_${id}" style="text-align:center;">${yF} לפי ${xF}</h4><canvas id="canvas_${id}"></canvas>`;
+            
+            // עכשיו הקנבס בטוח קיים ב-DOM בזכות התיקון
+            const ctx = document.getElementById(`canvas_${id}`).getContext('2d');
+            const bColor = type === 'pie' ? lbls.map(() => `hsl(${Math.random()*360},65%,60%)`) : '#1a73e8';
+            
+            chartInstances[id] = new Chart(ctx, {
+                type: type,
+                data: { labels: lbls, datasets: [{ label: yF, data: vals, backgroundColor: bColor }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // --- 4. ייצור אוטומטי חכם (מבוסס נתוני אמת בלבד) ---
+        function triggerAutoDashboard() {
+            const board = document.getElementById('dynamicDashboard');
+            if (board.children.length > 0) {
+                if (!confirm("אזהרה: יצירת דשבורד אוטומטי תמחק את הווידג'טים הקיימים. להמשיך?")) return;
+            }
+            
+            board.innerHTML = ''; 
+            for (let k in chartInstances) { chartInstances[k].destroy(); delete chartInstances[k]; }
+            document.getElementById('dashboardWrapper').style.display = 'block';
+
+            const hdrs = Object.keys(activeMergedData[0]);
+            
+            // חיפוש אוטומטי לעמודת טקסט וקטגוריה
+            let xField = hdrs[0];
+            let yField = hdrs.length > 1 ? hdrs[1] : hdrs[0];
+            
+            for(let h of hdrs) { if(typeof activeMergedData[0][h] === 'string') { xField = h; break; } }
+            for(let h of hdrs) { if(typeof activeMergedData[0][h] === 'number') { yField = h; break; } }
+
+            // ייצור 4 וידג'טים במכה אחת מהנתונים האמיתיים
+            addWidget({type: 'kpi_sum', y: yField, agg: 'count'});
+            addWidget({type: 'kpi_sum', y: yField, agg: 'sum'});
+            addWidget({type: 'bar', x: xField, y: yField, agg: 'sum'});
+            addWidget({type: 'pie', x: xField, y: yField, agg: 'count'});
+        }
+
+        // --- 5. עריכה, Drag&Drop וייצוא (ללא שינוי) ---
+        function openEditModal(wId, type) {
+            document.getElementById('editWidgetId').value = wId;
+            const widget = document.getElementById(wId);
+            const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`
+            try { document.getElementById('editBgColor').value = rgb2hex(window.getComputedStyle(widget).backgroundColor); } catch(e){}
+            const titleEl = document.getElementById(`title_${wId}`);
+            if(titleEl) document.getElementById('editFontSize').value = parseInt(window.getComputedStyle(titleEl).fontSize);
+            const colorGrp = document.getElementById('editChartColorGroup');
+            if(type.startsWith('kpi') || type === 'pie') { colorGrp.style.display = 'none'; } 
+            else { colorGrp.style.display = 'block'; if(chartInstances[wId]) document.getElementById('editChartColor').value = chartInstances[wId].data.datasets[0].backgroundColor; }
+            document.getElementById('editOverlay').style.display = 'block'; document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() { document.getElementById('editOverlay').style.display = 'none'; document.getElementById('editModal').style.display = 'none'; }
+
+        function saveWidgetEdits() {
+            const wId = document.getElementById('editWidgetId').value;
+            const widget = document.getElementById(wId);
+            widget.style.backgroundColor = document.getElementById('editBgColor').value;
+            const titleEl = document.getElementById(`title_${wId}`);
+            if(titleEl) titleEl.style.fontSize = `${document.getElementById('editFontSize').value}px`;
+            if(document.getElementById('editChartColorGroup').style.display !== 'none' && chartInstances[wId]) {
+                chartInstances[wId].data.datasets[0].backgroundColor = document.getElementById('editChartColor').value;
+                chartInstances[wId].update();
+            }
+            closeEditModal();
+        }
+
+        let draggedWidget = null;
+        function setupDragAndDrop(el) {
+            el.addEventListener('dragstart', function() { draggedWidget = this; setTimeout(() => this.style.opacity = '0.5', 0); });
+            el.addEventListener('dragend', function() { this.style.opacity = '1'; draggedWidget = null; });
+            el.addEventListener('dragover', function(e) { e.preventDefault(); });
+            el.addEventListener('dragenter', function(e) { e.preventDefault(); this.style.border = '2px dashed #1a73e8'; });
+            el.addEventListener('dragleave', function() { this.style.border = '1px solid #eee'; });
+            el.addEventListener('drop', function() {
+                this.style.border = '1px solid #eee';
+                if (this !== draggedWidget) {
+                    let all = Array.from(this.parentNode.children);
+                    if (all.indexOf(draggedWidget) < all.indexOf(this)) this.parentNode.insertBefore(draggedWidget, this.nextSibling);
+                    else this.parentNode.insertBefore(draggedWidget, this);
+                }
+            });
+        }
+
+        function exportDashboard() {
+            const board = document.getElementById('dashboardWrapper');
+            const hideEls = document.querySelectorAll('.hide-on-export');
+            hideEls.forEach(el => el.style.display = 'none');
+            const [oBg, oBorder] = [board.style.backgroundColor, board.style.border];
+            board.style.backgroundColor = '#ffffff'; board.style.border = 'none';
+            html2canvas(board, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+                const link = document.createElement('a'); link.download = `Clean_Dashboard.png`; link.href = canvas.toDataURL(); link.click();
+                hideEls.forEach(el => el.style.display = '');
+                board.style.backgroundColor = oBg; board.style.border = oBorder;
+            });
+        }
+    </script>
+</body>
+</html>
